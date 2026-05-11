@@ -1,3 +1,11 @@
+# License
+
+## Copyright
+
+Copyright (c) 2026 - 2036 Kingra007
+
+All Rights Reserved.
+
 # Handoff Relay
 
 Handoff Relay is a timed Minecraft handoff challenge mod developed by Kingra007.
