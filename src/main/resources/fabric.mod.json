@@ -1,0 +1,38 @@
+{
+	"schemaVersion": 1,
+	"id": "handoff-relay",
+	"version": "${version}",
+	"name": "Handoff Relay",
+	"description": "Handoff Relay - a timed single player handoff challenge mod developed by Kingra007.",
+	"authors": [
+		"Kingra007"
+	],
+	"contact": {
+		"issues": "TBD"
+	},
+
+	"license": "All Rights Reserved",
+	"icon": "assets/handoff-relay/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.kingra007.handoffrelay.HandoffRelay"
+		],
+		"client": [
+			"com.kingra007.handoffrelay.client.HandoffRelayClient"
+		]
+	},
+	"mixins": [
+		"handoff-relay.mixins.json",
+		{
+			"config": "handoff-relay.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.19.2",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}

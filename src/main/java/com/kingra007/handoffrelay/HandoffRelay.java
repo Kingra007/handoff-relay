@@ -1,0 +1,418 @@
+/*
+ * Handoff Relay
+ * Copyright (c) 2026 - 2036 Kingra007
+ *
+ * Developed by Kingra007.
+ * All Rights Reserved.
+ *
+ * Unauthorized redistribution or rebranding of this source or compiled
+ * project is prohibited without explicit permission.
+ */
+
+package com.kingra007.handoffrelay;
+
+import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.Level;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.minecraft.commands.Commands;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.UUID;
+
+public class HandoffRelay implements ModInitializer {
+	public static final String MOD_ID = "handoff-relay";
+
+	private static final int TURN_SECONDS = 60 * 60; // 60 * 60
+	private static int remainingTicks = TURN_SECONDS * 20;
+	private static UUID activePlayer = null;
+	private static boolean endingDueToTimer = false;
+
+	@Override
+	public void onInitialize() {
+		System.out.println("====================================");
+		System.out.println("Handoff Relay");
+		System.out.println("Developed by Kingra007");
+		System.out.println("All Rights Reserved");
+		System.out.println("====================================");
+
+		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
+			dispatcher.register(
+					Commands.literal("handoff")
+							.then(Commands.literal("spectator")
+									.then(Commands.argument("name", StringArgumentType.word())
+											.executes(context -> {
+												ServerPlayer player = context.getSource().getPlayerOrException();
+												MinecraftServer server = context.getSource().getServer();
+
+												HandoffState state = HandoffState.load(server);
+
+												if (state.creatorUuid.isEmpty()) {
+													state.creatorUuid = player.getUUID().toString();
+												}
+
+												if (!player.getUUID().toString().equals(state.creatorUuid)) {
+													player.sendSystemMessage(Component.literal("Only the original handoff creator can set the spectator account."));
+													return 0;
+												}
+
+												String spectatorName = StringArgumentType.getString(context, "name");
+												state.spectatorName = spectatorName;
+												state.save(server);
+
+												player.sendSystemMessage(Component.literal("Spectator account set to: " + spectatorName));
+												return 1;
+											})
+									)
+							)
+							.then(Commands.literal("time")
+									.then(Commands.argument("minutes", IntegerArgumentType.integer(1, 240))
+											.executes(context -> {
+												ServerPlayer player = context.getSource().getPlayerOrException();
+												MinecraftServer server = context.getSource().getServer();
+
+												HandoffState state = HandoffState.load(server);
+
+												if (state.creatorUuid.isEmpty()) {
+													state.creatorUuid = player.getUUID().toString();
+												}
+
+												if (!player.getUUID().toString().equals(state.creatorUuid)) {
+													player.sendSystemMessage(Component.literal("Only the original handoff creator can change the timer."));
+													return 0;
+												}
+
+												int minutes = IntegerArgumentType.getInteger(context, "minutes");
+												state.turnSeconds = minutes * 60;
+												state.save(server);
+
+												player.sendSystemMessage(Component.literal("Future handoff timer set to " + minutes + " minute(s)."));
+												return 1;
+											})
+									)
+							)
+			);
+		});
+
+		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
+			ServerPlayer player = handler.player;
+
+			HandoffState state = HandoffState.load(server);
+
+			boolean isSpectatorAccount = !state.spectatorName.isEmpty()
+					&& player.getName().getString().equalsIgnoreCase(state.spectatorName);
+
+			if (server.getPlayerList().getPlayerCount() > 1 && !isSpectatorAccount) {
+				player.connection.disconnect(Component.literal("Another player is currently playing this handoff world."));
+				return;
+			}
+
+			if (isSpectatorAccount) {
+				player.setGameMode(GameType.SPECTATOR);
+				player.sendSystemMessage(Component.literal("You have joined as the approved spectator."));
+				return;
+			}
+
+			sendOwnershipMessage(player, server);
+
+			activePlayer = player.getUUID();
+
+			boolean samePlayerAsLastRun = state.hasSave
+					&& player.getUUID().toString().equals(state.currentPlayerUuid);
+
+			if (state.timerExpired && samePlayerAsLastRun) {
+				player.connection.disconnect(Component.literal("Your handoff time has already expired."));
+				return;
+			}
+
+			if (state.timerExpired && !samePlayerAsLastRun) {
+				remainingTicks = state.turnSeconds * 20;
+				state.timerExpired = false;
+				state.remainingTicks = remainingTicks;
+				state.currentPlayerUuid = player.getUUID().toString();
+				state.save(server);
+			} else if (samePlayerAsLastRun) {
+				remainingTicks = state.remainingTicks;
+			} else {
+				remainingTicks = state.turnSeconds * 20;
+			}
+
+			lockPlayer(player);
+
+			// HandoffState state = HandoffState.load(server); // removed due to players rejoining and having full time
+
+			if (state.hasSave) {
+				applyState(player, server, state);
+			} else {
+				saveState(player, server);
+			}
+
+			int secondsLeft = remainingTicks / 20;
+			int minutes = secondsLeft / 60;
+			int seconds = secondsLeft % 60;
+
+			if (samePlayerAsLastRun && remainingTicks > 0) {
+				player.displayClientMessage(
+						Component.literal(String.format("Welcome back. You have %02d:%02d remaining.", minutes, seconds))
+								.withStyle(ChatFormatting.GOLD),
+						false
+				);
+			} else {
+				player.displayClientMessage(
+						Component.literal(String.format("Play for %02d:%02d, have fun", minutes, seconds))
+								.withStyle(ChatFormatting.GOLD),
+						false
+				);
+			}
+		});
+
+		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+			ServerPlayer player = handler.player;
+
+			if (activePlayer != null && activePlayer.equals(player.getUUID())) {
+				if (!endingDueToTimer) {
+					saveState(player, server);
+				}
+
+				activePlayer = null;
+				endingDueToTimer = false;
+			}
+		});
+
+		ServerTickEvents.END_SERVER_TICK.register(server -> {
+			if (activePlayer == null) return;
+
+			ServerPlayer player = server.getPlayerList().getPlayer(activePlayer);
+
+			if (player == null) {
+				activePlayer = null;
+				return;
+			}
+
+			lockPlayer(player);
+
+			remainingTicks--;
+
+			if (remainingTicks % 20 == 0) {
+				int secondsLeft = remainingTicks / 20;
+				int minutes = secondsLeft / 60;
+				int seconds = secondsLeft % 60;
+
+				player.displayClientMessage(
+						Component.literal(String.format("Time left: %02d:%02d", minutes, seconds))
+								.withStyle(ChatFormatting.YELLOW),
+						true
+				);
+			}
+
+			if (remainingTicks <= 0) {
+				saveState(player, server);
+
+				HandoffState expiredState = HandoffState.load(server);
+				expiredState.currentPlayerUuid = player.getUUID().toString();
+				expiredState.remainingTicks = 0;
+				expiredState.timerExpired = true;
+				expiredState.save(server);
+
+				endingDueToTimer = true;
+
+				player.connection.disconnect(Component.literal("Your handoff time is up."));
+				activePlayer = null;
+			}
+		});
+	}
+	// TODO: DISABLE FOR DEV TESTING
+	private static void lockPlayer(ServerPlayer player) {
+	if (player.gameMode.getGameModeForPlayer() != GameType.SURVIVAL) {
+		player.setGameMode(GameType.SURVIVAL);
+	}
+
+	player.getAbilities().mayfly = false;
+	player.getAbilities().flying = false;
+	player.getAbilities().instabuild = false;
+	player.onUpdateAbilities();
+}
+	// TODO: ENABLE FOR DEV TESTING
+	// private static void lockPlayer(ServerPlayer player) {
+	// DEV TEST MODE ENABLED
+	// }
+
+	private static void sendOwnershipMessage(ServerPlayer player, MinecraftServer server) {
+		HandoffState state = HandoffState.load(server);
+		String playerUuid = player.getUUID().toString();
+
+		for (net.minecraft.nbt.Tag rawTag : state.ownershipSeenPlayers) {
+			if (rawTag instanceof net.minecraft.nbt.CompoundTag seenTag) {
+				String seenUuid = seenTag.getString("Uuid").orElse("");
+
+				if (seenUuid.equals(playerUuid)) {
+					return;
+				}
+			}
+		}
+
+		net.minecraft.nbt.CompoundTag newSeenTag = new net.minecraft.nbt.CompoundTag();
+		newSeenTag.putString("Uuid", playerUuid);
+		state.ownershipSeenPlayers.add(newSeenTag);
+		state.save(server);
+
+		player.sendSystemMessage(Component.literal("====================================").withStyle(ChatFormatting.GOLD));
+		player.sendSystemMessage(Component.literal("Handoff Relay").withStyle(ChatFormatting.YELLOW));
+		player.sendSystemMessage(Component.literal("Developed by Kingra007").withStyle(ChatFormatting.YELLOW));
+		player.sendSystemMessage(Component.literal("All Rights Reserved").withStyle(ChatFormatting.YELLOW));
+		player.sendSystemMessage(Component.literal("====================================").withStyle(ChatFormatting.GOLD));
+	}
+
+	private static void saveState(ServerPlayer player, MinecraftServer server) {
+		HandoffState state = new HandoffState();
+		HandoffState previousState = HandoffState.load(server);
+
+		state.hasSave = true;
+
+		state.creatorUuid = previousState.creatorUuid.isEmpty()
+				? player.getUUID().toString()
+				: previousState.creatorUuid;
+
+		state.spectatorName = previousState.spectatorName;
+		state.turnSeconds = previousState.turnSeconds;
+		state.ownershipSeenPlayers = previousState.ownershipSeenPlayers;
+		state.currentPlayerUuid = player.getUUID().toString();
+		state.remainingTicks = remainingTicks;
+		state.timerExpired = false;
+
+		state.dimension = dimensionToString(player.level().dimension());
+		state.x = player.getX();
+		state.y = player.getY();
+		state.z = player.getZ();
+		state.yaw = player.getYRot();
+		state.pitch = player.getXRot();
+
+		BlockPos spawn = player.blockPosition();
+		state.spawnDimension = state.dimension;
+		state.spawnX = spawn.getX();
+		state.spawnY = spawn.getY();
+		state.spawnZ = spawn.getZ();
+		state.spawnAngle = player.getYRot();
+		state.spawnForced = true;
+
+		state.health = player.getHealth();
+		state.food = player.getFoodData().getFoodLevel();
+		state.saturation = player.getFoodData().getSaturationLevel();
+		state.xpLevel = player.experienceLevel;
+		state.xpProgress = player.experienceProgress;
+		state.totalXp = player.totalExperience;
+
+		state.selectedSlot = getSelectedSlot(player);
+
+		state.saveInventory(player);
+		state.selectedSlot = player.getInventory().getSelectedSlot();
+		state.save(server);
+	}
+
+	private static void applyState(ServerPlayer player, MinecraftServer server, HandoffState state) {
+		state.loadInventory(player);
+
+		setSelectedSlot(player, state.selectedSlot);
+
+		player.setHealth(Math.max(1.0F, state.health));
+		player.getFoodData().setFoodLevel(state.food);
+		player.getFoodData().setSaturation(state.saturation);
+
+		player.experienceLevel = state.xpLevel;
+		player.experienceProgress = state.xpProgress;
+		player.totalExperience = state.totalXp;
+
+		ResourceKey<Level> dimensionKey = dimensionFromString(state.dimension);
+		ServerLevel level = server.getLevel(dimensionKey);
+
+		if (level != null) {
+			teleportReflect(player, level, state.x, state.y, state.z, state.yaw, state.pitch);
+		}
+
+		ResourceKey<Level> spawnDimensionKey = dimensionFromString(state.spawnDimension);
+		setRespawnReflect(player, spawnDimensionKey, new BlockPos(state.spawnX, state.spawnY, state.spawnZ), state.spawnAngle, state.spawnForced);
+	}
+
+	private static String dimensionToString(ResourceKey<Level> key) {
+		if (key == Level.NETHER) return "minecraft:the_nether";
+		if (key == Level.END) return "minecraft:the_end";
+		return "minecraft:overworld";
+	}
+
+	private static ResourceKey<Level> dimensionFromString(String dimension) {
+		return switch (dimension) {
+			case "minecraft:the_nether" -> Level.NETHER;
+			case "minecraft:the_end" -> Level.END;
+			default -> Level.OVERWORLD;
+		};
+	}
+
+	private static int getSelectedSlot(ServerPlayer player) {
+		try {
+			Field field = player.getInventory().getClass().getDeclaredField("selected");
+			field.setAccessible(true);
+			return field.getInt(player.getInventory());
+		} catch (Exception ignored) {
+			return 0;
+		}
+	}
+
+	private static void setSelectedSlot(ServerPlayer player, int slot) {
+		try {
+			Field field = player.getInventory().getClass().getDeclaredField("selected");
+			field.setAccessible(true);
+			field.setInt(player.getInventory(), Math.max(0, Math.min(8, slot)));
+		} catch (Exception ignored) {
+		}
+	}
+
+	private static void teleportReflect(ServerPlayer player, ServerLevel level, double x, double y, double z, float yaw, float pitch) {
+		try {
+			for (Method method : player.getClass().getMethods()) {
+				if (!method.getName().equals("teleportTo")) continue;
+
+				Class<?>[] params = method.getParameterTypes();
+
+				if (params.length >= 6 && params[0].isAssignableFrom(ServerLevel.class)) {
+					method.invoke(player, level, x, y, z, yaw, pitch);
+					return;
+				}
+			}
+
+			player.teleportTo(x, y, z);
+		} catch (Exception ignored) {
+			player.teleportTo(x, y, z);
+		}
+	}
+
+	private static void setRespawnReflect(ServerPlayer player, ResourceKey<Level> dimension, BlockPos pos, float angle, boolean forced) {
+		try {
+			for (Method method : player.getClass().getMethods()) {
+				if (!method.getName().equals("setRespawnPosition")) continue;
+
+				if (method.getParameterCount() == 5) {
+					method.invoke(player, dimension, pos, angle, forced, false);
+					return;
+				}
+
+				if (method.getParameterCount() == 4) {
+					method.invoke(player, dimension, pos, angle, forced);
+					return;
+				}
+			}
+		} catch (Exception ignored) {
+		}
+	}
+}

@@ -1,0 +1,66 @@
+HANDOFF RELAY MOD - DEVELOPMENT BUILD ONLY
+
+This build is for private testing only.
+
+DO NOT SHARE.
+DO NOT REDISTRIBUTE.
+DO NOT USE AS A PRODUCTION BUILD.
+
+Ownership:
+- Handoff Relay is developed and owned by Kingra007.
+- Development, source ownership, attribution, public repository management, and final distribution rights remain under Kingra007 unless explicitly agreed otherwise in writing.
+- Current plans are for Handoff Relay to be publicly released by Kingra007 through official public channels including Modrinth once development, verification, cleanup, and release preparation are complete.
+
+Current status:
+- Core handoff logic is implemented.
+- Code is not fully commented yet.
+- Dev mode is still active for testing.
+- Commands and creative testing may be temporarily enabled.
+- Final production builds will restore survival enforcement and disable testing utilities.
+- Cross-player handoff still requires testing with a second Minecraft account.
+- Multi-machine/world-save transfer verification is in progress.
+- Timer may be set to a shortened value for testing instead of the final 1 hour setting.
+
+Implemented:
+- Player join message
+- Rejoin message with remaining time
+- Timer countdown
+- Timer resume on reconnect
+- Timer expiry enforcement
+- Expired player reconnect blocking
+- Location persistence
+- Spawnpoint persistence
+- Health persistence
+- Hunger/saturation persistence
+- XP persistence
+- Main inventory persistence
+- Hotbar persistence
+- Selected hotbar slot persistence
+- Armour persistence
+- Offhand persistence
+- Ender chest persistence
+- Potion/status effect persistence
+- Save persistence across restart
+- Single active-player enforcement
+- First-player-only timer configuration command
+- Spectator account allowance command
+- Console ownership banner
+- First-join in-game ownership notice
+
+This build is intended to verify:
+- Player A expiry - PASS
+- Player A lockout after expiry - PASS
+- Player B takeover after Player A expires
+- Saved location handoff
+- Fresh timer for Player B
+- Full player state handoff
+- Singleplayer/world-save transfer workflow
+- Server-hosted handoff workflow
+
+Known limitations / pending:
+- Spectator live verification requires a second account.
+- Full Player A to Player B handoff verification requires a second account.
+- Multi-machine/world-save transfer verification is pending.
+- Custom HUD above hotbar is not implemented yet.
+- Final Modrinth packaging is not complete.
+- Public repository/release infrastructure is not complete.
