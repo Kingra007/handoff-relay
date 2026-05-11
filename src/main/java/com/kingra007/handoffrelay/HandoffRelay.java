@@ -332,7 +332,7 @@ public class HandoffRelay implements ModInitializer {
 
 	// ===== HELPER METHODS =====
 
-	// TODO: ENABLE FOR PRODUCTION
+	// ENABLE FOR PRODUCTION
 	private static void lockPlayer(ServerPlayer player) {
 	if (player.gameMode.getGameModeForPlayer() != GameType.SURVIVAL) {
 		player.setGameMode(GameType.SURVIVAL);
@@ -343,7 +343,7 @@ public class HandoffRelay implements ModInitializer {
 	player.getAbilities().instabuild = false;
 	player.onUpdateAbilities();
 }
-	// TODO: ENABLE FOR DEV TESTING
+	// ENABLE FOR DEV TESTING
 	// private static void lockPlayer(ServerPlayer player) {
 	// DEV TEST MODE ENABLED
 	// }
