@@ -28,6 +28,17 @@ import net.minecraft.world.effect.MobEffectInstance;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+/*
+ * Persistent serialized handoff-state container.
+ *
+ * Responsible for:
+ * - storing player progression/state
+ * - timer persistence
+ * - ownership metadata
+ * - spectator configuration
+ * - world-transfer continuity
+ */
+
 public class HandoffState {
 
     public boolean hasSave = false;
@@ -74,9 +85,25 @@ public class HandoffState {
     public String creatorUuid = "";
     public String spectatorName = "";
 
+    /*
+     * Resolves the persistent save location for
+     * handoff_state.dat inside the active world folder.
+     */
+
     private static Path getSavePath(MinecraftServer server) {
         return server.getWorldPath(LevelResource.ROOT).resolve("handoff_state.dat");
     }
+
+    /*
+     * Serializes all player inventory-related data.
+     *
+     * Includes:
+     * - main inventory
+     * - armour
+     * - offhand
+     * - ender chest
+     * - potion effects
+     */
 
     public void saveInventory(ServerPlayer player) {
         inventory = new ListTag();
@@ -162,6 +189,11 @@ public class HandoffState {
             });
         }
     }
+
+    /*
+     * Restores serialized inventory/effect data
+     * onto the active player.
+     */
 
     public void loadInventory(ServerPlayer player) {
         player.getInventory().clearContent();
@@ -265,6 +297,11 @@ public class HandoffState {
         player.getInventory().setChanged();
     }
 
+    /*
+     * Writes the complete handoff state into
+     * handoff_state.dat using NBT serialization.
+     */
+
     public void save(MinecraftServer server) {
         try {
             CompoundTag tag = new CompoundTag();
@@ -317,6 +354,13 @@ public class HandoffState {
             e.printStackTrace();
         }
     }
+
+    /*
+     * Loads previously serialized handoff state
+     * from handoff_state.dat.
+     *
+     * Returns a default empty state if no save exists.
+     */
 
     public static HandoffState load(MinecraftServer server) {
         HandoffState state = new HandoffState();

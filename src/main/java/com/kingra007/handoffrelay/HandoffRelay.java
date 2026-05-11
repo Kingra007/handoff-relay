@@ -32,6 +32,18 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.UUID;
 
+/*
+ * Main mod entrypoint for Handoff Relay.
+ *
+ * Handles:
+ * - player join/disconnect lifecycle
+ * - timer enforcement
+ * - handoff persistence
+ * - spectator handling
+ * - production anti-abuse enforcement
+ * - ownership attribution systems
+ */
+
 public class HandoffRelay implements ModInitializer {
 	public static final String MOD_ID = "handoff-relay";
 
@@ -39,6 +51,16 @@ public class HandoffRelay implements ModInitializer {
 	private static int remainingTicks = TURN_SECONDS * 20;
 	private static UUID activePlayer = null;
 	private static boolean endingDueToTimer = false;
+
+	/*
+	 * Initializes all runtime systems and event handlers.
+	 *
+	 * Registers:
+	 * - commands
+	 * - join handlers
+	 * - disconnect handlers
+	 * - server tick timer logic
+	 */
 
 	@Override
 	public void onInitialize() {
@@ -233,7 +255,20 @@ public class HandoffRelay implements ModInitializer {
 			}
 		});
 	}
-	// TODO: DISABLE FOR DEV TESTING
+
+	/*
+	 * Enforces production gameplay restrictions.
+	 *
+	 * Prevents:
+	 * - creative mode abuse
+	 * - flight
+	 * - instabuild
+	 *
+	 * Used continuously during runtime to ensure
+	 * the active player remains in survival mode.
+	 */
+
+	// TODO: ENABLE FOR PRODUCTION
 	private static void lockPlayer(ServerPlayer player) {
 	if (player.gameMode.getGameModeForPlayer() != GameType.SURVIVAL) {
 		player.setGameMode(GameType.SURVIVAL);
@@ -248,6 +283,14 @@ public class HandoffRelay implements ModInitializer {
 	// private static void lockPlayer(ServerPlayer player) {
 	// DEV TEST MODE ENABLED
 	// }
+
+	/*
+	 * Displays ownership and attribution information
+	 * to players on their first join only.
+	 *
+	 * Seen-player tracking is persisted in
+	 * handoff_state.dat to avoid repeated messages.
+	 */
 
 	private static void sendOwnershipMessage(ServerPlayer player, MinecraftServer server) {
 		HandoffState state = HandoffState.load(server);
@@ -274,6 +317,23 @@ public class HandoffRelay implements ModInitializer {
 		player.sendSystemMessage(Component.literal("All Rights Reserved").withStyle(ChatFormatting.YELLOW));
 		player.sendSystemMessage(Component.literal("====================================").withStyle(ChatFormatting.GOLD));
 	}
+
+	/*
+	 * Serializes the active player's handoff state.
+	 *
+	 * Saves:
+	 * - inventory
+	 * - armour/offhand
+	 * - ender chest
+	 * - XP/health/hunger
+	 * - potion effects
+	 * - position/dimension
+	 * - respawn data
+	 * - timer state
+	 * - ownership metadata
+	 *
+	 * Data is written into handoff_state.dat.
+	 */
 
 	private static void saveState(ServerPlayer player, MinecraftServer server) {
 		HandoffState state = new HandoffState();
@@ -321,6 +381,18 @@ public class HandoffRelay implements ModInitializer {
 		state.save(server);
 	}
 
+	/*
+	 * Restores a previously serialized handoff state
+	 * onto the currently active player.
+	 *
+	 * Applies:
+	 * - inventories
+	 * - effects
+	 * - health/XP
+	 * - location/dimension
+	 * - respawn position
+	 */
+
 	private static void applyState(ServerPlayer player, MinecraftServer server, HandoffState state) {
 		state.loadInventory(player);
 
@@ -359,6 +431,14 @@ public class HandoffRelay implements ModInitializer {
 		};
 	}
 
+	/*
+	 * Reflection helper used to retrieve the currently
+	 * selected hotbar slot from the player inventory.
+	 *
+	 * Reflection is used for compatibility across
+	 * Minecraft/Fabric mappings.
+	 */
+
 	private static int getSelectedSlot(ServerPlayer player) {
 		try {
 			Field field = player.getInventory().getClass().getDeclaredField("selected");
@@ -369,6 +449,11 @@ public class HandoffRelay implements ModInitializer {
 		}
 	}
 
+	/*
+	 * Reflection helper used to restore the player's
+	 * selected hotbar slot during state application.
+	 */
+
 	private static void setSelectedSlot(ServerPlayer player, int slot) {
 		try {
 			Field field = player.getInventory().getClass().getDeclaredField("selected");
@@ -377,6 +462,14 @@ public class HandoffRelay implements ModInitializer {
 		} catch (Exception ignored) {
 		}
 	}
+
+	/*
+	 * Reflection-safe teleport wrapper used for
+	 * cross-version/server compatibility.
+	 *
+	 * Falls back to basic teleportation if reflective
+	 * invocation fails.
+	 */
 
 	private static void teleportReflect(ServerPlayer player, ServerLevel level, double x, double y, double z, float yaw, float pitch) {
 		try {
@@ -396,6 +489,11 @@ public class HandoffRelay implements ModInitializer {
 			player.teleportTo(x, y, z);
 		}
 	}
+
+	/*
+	 * Reflection-safe respawn position setter used
+	 * for compatibility across changing server APIs.
+	 */
 
 	private static void setRespawnReflect(ServerPlayer player, ResourceKey<Level> dimension, BlockPos pos, float angle, boolean forced) {
 		try {
