@@ -112,6 +112,13 @@ public class HandoffRelay implements ModInitializer {
 
 												HandoffState state = HandoffState.load(server);
 
+												if (state.integrityLocked) {
+													player.connection.disconnect(Component.literal(
+															"Handoff Relay integrity lock: " + state.integrityLockReason
+													));
+													return 0;
+												}
+
 												if (state.creatorUuid.isEmpty()) {
 													state.creatorUuid = player.getUUID().toString();
 												}
@@ -137,6 +144,8 @@ public class HandoffRelay implements ModInitializer {
 												MinecraftServer server = context.getSource().getServer();
 
 												HandoffState state = HandoffState.load(server);
+
+
 
 												if (state.creatorUuid.isEmpty()) {
 													state.creatorUuid = player.getUUID().toString();
@@ -218,6 +227,13 @@ public class HandoffRelay implements ModInitializer {
 			lockPlayer(player);
 
 			// HandoffState state = HandoffState.load(server); // removed due to players rejoining and having full time
+
+			if (state.integrityLocked) {
+				player.connection.disconnect(Component.literal(
+						"Handoff Relay integrity lock: " + state.integrityLockReason
+				));
+				return;
+			}
 
 			if (state.hasSave) {
 				applyState(player, server, state);

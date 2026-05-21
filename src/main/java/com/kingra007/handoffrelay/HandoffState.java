@@ -27,6 +27,7 @@ import net.minecraft.world.effect.MobEffectInstance;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.io.IOException;
 
 /*
  * Persistent serialized handoff-state container.
@@ -85,6 +86,9 @@ public class HandoffState {
     public String creatorUuid = "";
     public String spectatorName = "";
 
+    public boolean integrityLocked = false;
+    public String integrityLockReason = "";
+
     /*
      * Resolves the persistent save location for
      * handoff_state.dat inside the active world folder.
@@ -92,6 +96,14 @@ public class HandoffState {
 
     private static Path getSavePath(MinecraftServer server) {
         return server.getWorldPath(LevelResource.ROOT).resolve("handoff_state.dat");
+    }
+
+    private static Path getBackupPath(MinecraftServer server) {
+        return server.getWorldPath(LevelResource.ROOT).resolve("handoff_state_backup.dat");
+    }
+
+    private static Path getMarkerPath(MinecraftServer server) {
+        return server.getWorldPath(LevelResource.ROOT).resolve("handoff_world_initialized.lock");
     }
 
     /*
@@ -349,7 +361,13 @@ public class HandoffState {
 
             tag.put("OwnershipSeenPlayers", ownershipSeenPlayers);
 
+            tag.putBoolean("IntegrityLocked", integrityLocked);
+            tag.putString("IntegrityLockReason", integrityLockReason);
+
+            Files.writeString(getMarkerPath(server), "initialized");
+
             NbtIo.write(tag, getSavePath(server));
+            NbtIo.write(tag, getBackupPath(server));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -367,12 +385,33 @@ public class HandoffState {
 
         try {
             Path path = getSavePath(server);
+            Path backupPath = getBackupPath(server);
+            Path markerPath = getMarkerPath(server);
+
+            CompoundTag tag;
 
             if (!Files.exists(path)) {
-                return state;
-            }
+                if (Files.exists(backupPath)) {
+                    CompoundTag backupTag = NbtIo.read(backupPath);
 
-            CompoundTag tag = NbtIo.read(path);
+                    if (backupTag != null) {
+                        NbtIo.write(backupTag, path);
+                        tag = backupTag;
+                    } else {
+                        state.integrityLocked = true;
+                        state.integrityLockReason = "Handoff backup state was unreadable.";
+                        return state;
+                    }
+                } else if (Files.exists(markerPath)) {
+                    state.integrityLocked = true;
+                    state.integrityLockReason = "Handoff state file is missing and no valid backup exists.";
+                    return state;
+                } else {
+                    return state;
+                }
+            } else {
+                tag = NbtIo.read(path);
+            }
 
             if (tag == null) {
                 return state;
@@ -382,7 +421,10 @@ public class HandoffState {
 
             state.currentPlayerUuid = tag.getString("CurrentPlayerUuid").orElse("");
             state.remainingTicks = tag.getInt("RemainingTicks").orElse(60 * 60 * 20);
+            state.turnSeconds = tag.getInt("TurnSeconds").orElse(60 * 60);
             state.timerExpired = tag.getBoolean("TimerExpired").orElse(false);
+            state.integrityLocked = tag.getBoolean("IntegrityLocked").orElse(false);
+            state.integrityLockReason = tag.getString("IntegrityLockReason").orElse("");
 
             state.x = tag.getDouble("X").orElse(0.0);
             state.y = tag.getDouble("Y").orElse(64.0);
