@@ -106,16 +106,21 @@ Confirmed:
 - Dangerous command blocking
 - Cheat escalation prevention
 
-Partially validated:
-- Second-player expiry handoff lifecycle
-- Spectator live testing
+## [1.0.0] - 2026-05-24
 
-Known remaining:
-- Full deletion exploit:
-  deleting:
-  handoff_state.dat
-  handoff_state_backup.dat
-  handoff_world_initialized.lock
-  may still reset world state
-- Controlled creator reset command
-- Final exploit regression suite
+### Release
+
+Stable public release.
+
+Validated:
+- Full Player A expiry handoff lifecycle
+- Player A expiry disconnect enforcement
+- Player A rejoin restriction
+- Player B takeover validation
+- Fresh timer assignment for Player B
+- Full second-account handoff validation
+- Dangerous command tamper protection
+- LAN cheat escalation mitigation
+
+Release notes:
+Handoff Relay is now considered stable for public use.
