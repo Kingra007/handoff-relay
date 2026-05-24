@@ -5,27 +5,19 @@ Handoff Relay uses staged release versioning.
 ## Version Stages
 
 ### v1.0.0-dev
-Internal development build.
+Internal development builds.
 
 Used for:
 - active feature development
-- local testing
-- early external validation
-
-### v1.0.0-testing
-External testing build.
-
-Used for:
-- tester validation
-- world-transfer testing
-- second-account/multiplayer checks
+- local implementation
+- internal validation
 
 ### v1.0.0-beta
-Public beta build.
+Public beta builds.
 
 Used for:
 - wider public testing
-- Modrinth/GitHub pre-release
+- pre-release validation
 - final bug discovery
 
 ### v1.0.0
@@ -34,11 +26,12 @@ Stable public release.
 Used for:
 - public Modrinth release
 - stable GitHub release
-- documented install/support workflow
+- supported production gameplay
 
 ## Current Version
 
 Current project stage:
 
 ```text
-v1.0.0-dev
+v1.0.0
+Stable public release

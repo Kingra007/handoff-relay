@@ -113,7 +113,7 @@ Confirmed:
 Stable public release.
 
 Validated:
-- Full Player A expiry handoff lifecycle
+- Full Player A -> Player B handoff lifecycle
 - Player A expiry disconnect enforcement
 - Player A rejoin restriction
 - Player B takeover validation
@@ -121,6 +121,8 @@ Validated:
 - Full second-account handoff validation
 - Dangerous command tamper protection
 - LAN cheat escalation mitigation
+- Integrity backup restoration
+- Persistent player progression continuity
 
 Release notes:
 Handoff Relay is now considered stable for public use.

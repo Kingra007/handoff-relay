@@ -61,7 +61,7 @@ public class HandoffState {
     public boolean spawnForced;
 
     public String currentPlayerUuid = "";
-    public int remainingTicks = 60 * 60 * 20;
+    public int remainingTicks = 60 * 3 * 20;
     public boolean timerExpired = false;
 
     public float health = 20f;
@@ -73,7 +73,10 @@ public class HandoffState {
     public float xpProgress;
     public int totalXp;
 
-    public int turnSeconds = 60 * 60;
+    public int turnSeconds = 60 * 3;
+
+    public int totalPlayers = 0;
+    public int currentPlayerNumber = 1;
 
     public int selectedSlot;
     public ListTag inventory = new ListTag();
@@ -323,6 +326,8 @@ public class HandoffState {
             tag.putInt("RemainingTicks", remainingTicks);
             tag.putInt("TurnSeconds", turnSeconds);
             tag.putBoolean("TimerExpired", timerExpired);
+            tag.putInt("TotalPlayers", totalPlayers);
+            tag.putInt("CurrentPlayerNumber", currentPlayerNumber);
 
             tag.putDouble("X", x);
             tag.putDouble("Y", y);
@@ -420,8 +425,10 @@ public class HandoffState {
             state.hasSave = tag.getBoolean("HasSave").orElse(false);
 
             state.currentPlayerUuid = tag.getString("CurrentPlayerUuid").orElse("");
-            state.remainingTicks = tag.getInt("RemainingTicks").orElse(60 * 60 * 20);
-            state.turnSeconds = tag.getInt("TurnSeconds").orElse(60 * 60);
+            state.remainingTicks = tag.getInt("RemainingTicks").orElse(60 * 3 * 20);
+            state.turnSeconds = tag.getInt("TurnSeconds").orElse(60 * 3);
+            state.totalPlayers = tag.getInt("TotalPlayers").orElse(0);
+            state.currentPlayerNumber = tag.getInt("CurrentPlayerNumber").orElse(1);
             state.timerExpired = tag.getBoolean("TimerExpired").orElse(false);
             state.integrityLocked = tag.getBoolean("IntegrityLocked").orElse(false);
             state.integrityLockReason = tag.getString("IntegrityLockReason").orElse("");

@@ -168,6 +168,45 @@ public class HandoffRelay implements ModInitializer {
 											})
 									)
 							)
+
+							.then(Commands.literal("players")
+									.then(Commands.argument("count", IntegerArgumentType.integer(1, 999))
+											.executes(context -> {
+												ServerPlayer player = context.getSource().getPlayerOrException();
+												MinecraftServer server = context.getSource().getServer();
+
+												HandoffState state = HandoffState.load(server);
+
+												if (state.integrityLocked) {
+													player.connection.disconnect(Component.literal(
+															"Handoff Relay integrity lock: " + state.integrityLockReason
+													));
+													return 0;
+												}
+
+												if (state.creatorUuid.isEmpty()) {
+													state.creatorUuid = player.getUUID().toString();
+												}
+
+												if (!player.getUUID().toString().equals(state.creatorUuid)) {
+													player.sendSystemMessage(Component.literal("Only the original handoff creator can set the player count."));
+													return 0;
+												}
+
+												int count = IntegerArgumentType.getInteger(context, "count");
+												state.totalPlayers = count;
+
+												if (state.currentPlayerNumber < 1) {
+													state.currentPlayerNumber = 1;
+												}
+
+												state.save(server);
+
+												player.sendSystemMessage(Component.literal("Total handoff players set to: " + count));
+												return 1;
+											})
+									)
+							)
 			);
 		});
 
@@ -205,7 +244,14 @@ public class HandoffRelay implements ModInitializer {
 
 			sendOwnershipMessage(player, server);
 
-			activePlayer = player.getUUID();
+			if (state.integrityLocked) {
+				player.connection.disconnect(Component.literal(
+						"Handoff Relay integrity lock: " + state.integrityLockReason
+				));
+				return;
+			}
+
+			sendOwnershipMessage(player, server);
 
 			boolean samePlayerAsLastRun = state.hasSave
 					&& player.getUUID().toString().equals(state.currentPlayerUuid);
@@ -220,6 +266,13 @@ public class HandoffRelay implements ModInitializer {
 				state.timerExpired = false;
 				state.remainingTicks = remainingTicks;
 				state.currentPlayerUuid = player.getUUID().toString();
+
+				if (state.currentPlayerNumber < 1) {
+					state.currentPlayerNumber = 1;
+				}
+
+				state.currentPlayerNumber++;
+
 				state.save(server);
 			} else if (samePlayerAsLastRun) {
 				remainingTicks = state.remainingTicks;
@@ -229,14 +282,9 @@ public class HandoffRelay implements ModInitializer {
 
 			lockPlayer(player);
 
-			// HandoffState state = HandoffState.load(server); // removed due to players rejoining and having full time
+			activePlayer = player.getUUID();
 
-			if (state.integrityLocked) {
-				player.connection.disconnect(Component.literal(
-						"Handoff Relay integrity lock: " + state.integrityLockReason
-				));
-				return;
-			}
+
 
 			if (state.hasSave) {
 				applyState(player, server, state);
@@ -258,6 +306,20 @@ public class HandoffRelay implements ModInitializer {
 				player.displayClientMessage(
 						Component.literal(String.format("Play for %02d:%02d, have fun", minutes, seconds))
 								.withStyle(ChatFormatting.GOLD),
+						false
+				);
+			}
+
+			if (state.totalPlayers > 0) {
+				player.displayClientMessage(
+						Component.literal("You are Player " + state.currentPlayerNumber + " of " + state.totalPlayers + ".")
+								.withStyle(ChatFormatting.AQUA),
+						false
+				);
+			} else {
+				player.displayClientMessage(
+						Component.literal("You are Player " + state.currentPlayerNumber + ".")
+								.withStyle(ChatFormatting.AQUA),
 						false
 				);
 			}
@@ -448,6 +510,8 @@ public class HandoffRelay implements ModInitializer {
 
 		state.spectatorName = previousState.spectatorName;
 		state.turnSeconds = previousState.turnSeconds;
+		state.totalPlayers = previousState.totalPlayers;
+		state.currentPlayerNumber = previousState.currentPlayerNumber;
 		state.ownershipSeenPlayers = previousState.ownershipSeenPlayers;
 		state.currentPlayerUuid = player.getUUID().toString();
 		state.remainingTicks = remainingTicks;
