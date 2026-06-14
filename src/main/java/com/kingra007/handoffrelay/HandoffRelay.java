@@ -278,6 +278,13 @@ public class HandoffRelay implements ModInitializer {
 				remainingTicks = state.remainingTicks;
 			} else {
 				remainingTicks = state.turnSeconds * 20;
+				state.currentPlayerUuid = player.getUUID().toString();
+
+				if (!state.hasSave) {
+					state.currentPlayerNumber = 1;
+				}
+
+				state.save(server);
 			}
 
 			lockPlayer(player);
