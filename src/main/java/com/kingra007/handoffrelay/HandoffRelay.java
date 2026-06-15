@@ -116,10 +116,10 @@ public class HandoffRelay implements ModInitializer {
 												HandoffState state = HandoffState.load(server);
 
 												if (state.integrityLocked) {
-													player.connection.disconnect(Component.literal(
-															"Handoff Relay integrity lock: " + state.integrityLockReason
-													));
-													return 0;
+													player.sendSystemMessage(Component.literal(
+															"WARNING: This handoff session has been flagged. Reason: "
+																	+ state.integrityLockReason
+													).withStyle(ChatFormatting.RED));
 												}
 
 												if (state.creatorUuid.isEmpty()) {
@@ -383,12 +383,11 @@ public class HandoffRelay implements ModInitializer {
 				state.integrityLockReason = "LAN/cheat tampering detected.";
 				state.save(server);
 
-				player.connection.disconnect(Component.literal(
-						"Handoff Relay integrity lock: LAN/cheat tampering detected."
-				));
+				player.sendSystemMessage(Component.literal(
+						"WARNING: LAN/cheat tampering detected. This handoff session has been flagged."
+				).withStyle(ChatFormatting.RED));
 
-				activePlayer = null;
-				return;
+				lockPlayer(player);
 			}
 
 			lockPlayer(player);
