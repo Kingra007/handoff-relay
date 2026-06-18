@@ -2,25 +2,33 @@
 
 All notable changes to Handoff Relay will be documented in this file.
 
-## [1.0.1] - 2026-06-17
+## [1.0.1] - 2026-06-18
 
 ### Changed
 
-- Removed single active-player enforcement (allow multiple clients to connect without being kicked).
-- Removed LAN/cheat escalation detection and anti-tamper disconnect enforcement.
-- Removed integrity-lock enforcement and dangerous-command escalation (commands are no longer auto-disconnecting).
-- Disabled automatic anti-creative/anti-flight enforcement (lockPlayer is now a no-op).
-- /handoff time now applies immediately to the issuer: updates timer, preserves remaining time on reconnect, and will disconnect in multiplayer so rejoin uses the new time (no disconnect in singleplayer).
-- Improved player numbering to only increment for previously unseen UUIDs.
-- Fixed timer/action-bar restore so the displayed countdown reflects the saved remaining time.
+- Allowed multiple clients per-account (removed single active-player enforcement).
+- LAN/cheat escalation checks and anti-tamper disconnects are turned off.
+- Integrity-lock auto-enforcement is disabled. Dangerous commands will no longer disconnect you automatically, they will just be disabled.
+- Anti-creative/flight is disabled (lockPlayer became a no-op).
+- Short disconnects will now keep your turn (don't create new session). Fix causes reconnects to interfere with turn timers.
+- currentPlayerNumber will only increment when starting a new turn/session (aka after timer ends or first player in fresh session), not on light reconnects.
+- handoff time now takes effect immediately on issuer AND keeps its time on reconnect by disconnecting the player first.
+- Timer/action-bar now properly restores and displays its saved remaining time.
 
 ### Added
 
-- Robust backup and recovery: atomic saves, timestamped backups stored in world/handoff_backups, retention of last 3 backups, and promotion of the newest readable backup on load.
+-  Added per-turn session UUIDs, uniquely identifies player-turns. (distinct from your account UUID).
+- Big visually obvious countdown during last 10 seconds (title APIs with bold/red action-bar fallback)
+- More robust backups: atomic saves, stores timestamped backups in world/handoff_ backups, keeps last 3, and automatically replaces your current with the newest readable backup on load.
+
+### Fixed
+
+- Disconnects no longer create new sessions on short reconnects (because per turn session UUIDs are now preserved).
+- Fixed countdown/action-bar being inaccurate/not visibly obvious for last seconds.
 
 ### Notes
 
-- These changes prioritize compatibility with modded/Essentials clients and reduce aggressive anti-abuse enforcement while improving save resilience.
+These changes relax enforcement against modded clients, improve handoff tracking by making turn identities explicit (per turn session IDs), polishUX during last seconds, and improve resilience of saves without overly-punishing clients for potential abuse.
 
 ## [1.0.0-dev] - 2026-05-11
 
