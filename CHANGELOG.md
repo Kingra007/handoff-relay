@@ -2,6 +2,26 @@
 
 All notable changes to Handoff Relay will be documented in this file.
 
+## [1.0.1] - 2026-06-17
+
+### Changed
+
+- Removed single active-player enforcement (allow multiple clients to connect without being kicked).
+- Removed LAN/cheat escalation detection and anti-tamper disconnect enforcement.
+- Removed integrity-lock enforcement and dangerous-command escalation (commands are no longer auto-disconnecting).
+- Disabled automatic anti-creative/anti-flight enforcement (lockPlayer is now a no-op).
+- /handoff time now applies immediately to the issuer: updates timer, preserves remaining time on reconnect, and will disconnect in multiplayer so rejoin uses the new time (no disconnect in singleplayer).
+- Improved player numbering to only increment for previously unseen UUIDs.
+- Fixed timer/action-bar restore so the displayed countdown reflects the saved remaining time.
+
+### Added
+
+- Robust backup and recovery: atomic saves, timestamped backups stored in world/handoff_backups, retention of last 3 backups, and promotion of the newest readable backup on load.
+
+### Notes
+
+- These changes prioritize compatibility with modded/Essentials clients and reduce aggressive anti-abuse enforcement while improving save resilience.
+
 ## [1.0.0-dev] - 2026-05-11
 
 ### Added
