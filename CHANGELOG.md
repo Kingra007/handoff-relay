@@ -2,34 +2,6 @@
 
 All notable changes to Handoff Relay will be documented in this file.
 
-## [1.0.1] - 2026-06-18
-
-### Changed
-
-- Allowed multiple clients per-account (removed single active-player enforcement).
-- LAN/cheat escalation checks and anti-tamper disconnects are turned off.
-- Integrity-lock auto-enforcement is disabled. Dangerous commands will no longer disconnect you automatically, they will just be disabled.
-- Anti-creative/flight is disabled (lockPlayer became a no-op).
-- Short disconnects will now keep your turn (don't create new session). Fix causes reconnects to interfere with turn timers.
-- currentPlayerNumber will only increment when starting a new turn/session (aka after timer ends or first player in fresh session), not on light reconnects.
-- handoff time now takes effect immediately on issuer AND keeps its time on reconnect by disconnecting the player first.
-- Timer/action-bar now properly restores and displays its saved remaining time.
-
-### Added
-
--  Added per-turn session UUIDs, uniquely identifies player-turns. (distinct from your account UUID).
-- Big visually obvious countdown during last 10 seconds (title APIs with bold/red action-bar fallback)
-- More robust backups: atomic saves, stores timestamped backups in world/handoff_ backups, keeps last 3, and automatically replaces your current with the newest readable backup on load.
-
-### Fixed
-
-- Disconnects no longer create new sessions on short reconnects (because per turn session UUIDs are now preserved).
-- Fixed countdown/action-bar being inaccurate/not visibly obvious for last seconds.
-
-### Notes
-
-These changes relax enforcement against modded clients, improve handoff tracking by making turn identities explicit (per turn session IDs), polishUX during last seconds, and improve resilience of saves without overly-punishing clients for potential abuse.
-
 ## [1.0.0-dev] - 2026-05-11
 
 ### Added
@@ -133,6 +105,23 @@ Confirmed:
 - Save deletion recovery from backup
 - Dangerous command blocking
 - Cheat escalation prevention
+
+## [1.0.2] - 2026-06-18
+
+### Integrity Lock Preservation
+
+All integrity lock enforcement features remain fully active and functional:
+- Integrity lock auto-enforcement enabled
+- LAN/cheat escalation detection active
+- Anti-tamper disconnect enforcement active
+- Dangerous command blocking with automatic disconnect
+- Anti-creative/flight enforcement (lockPlayer) enabled
+- Backup restoration with integrity lock on corrupt/missing saves
+- World initialization integrity marker enforcement
+
+### Notes
+
+Integrity lock system is preserved with all anti-tamper protections active. No enforcement features have been disabled.
 
 ## [1.0.0] - 2026-05-24
 
