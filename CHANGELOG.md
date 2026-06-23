@@ -2,22 +2,30 @@
 
 All notable changes to Handoff Relay will be documented in this file.
 
-## [1.0.1] - 2026-06-18
+## [1.0.2] - 2026-06-22
 
-### Integrity Lock Preservation
+### Added
 
-All integrity lock enforcement features remain fully active and functional:
-- Integrity lock auto-enforcement enabled
-- LAN/cheat escalation detection active
-- Anti-tamper disconnect enforcement active
-- Dangerous command blocking with automatic disconnect
-- Anti-creative/flight enforcement (lockPlayer) enabled
-- Backup restoration with integrity lock on corrupt/missing saves
-- World initialization integrity marker enforcement
+- Short disconnects will now keep your turn (don't create a new session)
+- Per-turn session UUIDs, which uniquely identify player-turns
+- Big visually obvious countdown during the last 10 seconds (title APIs with bold/red action-bar fallback)
+
+### Fixed
+
+- Disconnects no longer create new sessions on short reconnects
+- Countdown/action-bar being inaccurate/not visibly obvious for the last seconds
 
 ### Notes
 
-Integrity lock system is preserved with all anti-tamper protections active. No enforcement features have been disabled.
+- Improve handoff tracking by making turn identities explicit (per-turn session IDs)
+- Polish UX during the last seconds of a turn
+
+## [1.0.1] - 2026-06-18
+
+### Notes
+
+Replace integrity lockouts with warning flags (LAN)
+
 
 ## [1.0.0] - 2026-05-24
 
